@@ -3,6 +3,7 @@ services:
     name: ocr-card-manager-api
     runtime: node
     region: oregon
+    plan: free
 
     rootDir: server
 
@@ -18,11 +19,12 @@ services:
   - type: web
     name: ocr-card-manager-web
     runtime: static
+    plan: free
 
     rootDir: client
 
     buildCommand: npm install && npm run build
-    staticPublishPath: dist
+    staticPublishPath: client/dist
 
     routes:
       - type: rewrite
