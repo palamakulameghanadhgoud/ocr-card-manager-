@@ -1,17 +1,25 @@
 {
-  "name": "business-card-manager-server",
+  "name": "answer-paper-correction-server",
   "version": "1.0.0",
   "type": "module",
+  "description": "Node/Express API gateway for the answer-paper correction system",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "vitest run"
   },
   "dependencies": {
+    "axios": "^1.7.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
+    "form-data": "^4.0.1",
     "mongoose": "^8.8.0",
-    "multer": "^1.4.5-lts.1",
-    "tesseract.js": "^5.1.1"
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^10.1.2",
+    "supertest": "^7.0.0",
+    "vitest": "^2.1.4"
   }
 }

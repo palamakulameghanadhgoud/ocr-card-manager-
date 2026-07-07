@@ -1,0 +1,26 @@
+# ---------------------------------------------------------------------------
+# Core dependencies — installable on CPU, no GPU required.
+# These let the service boot, run the full pipeline with fallback OCR
+# (Tesseract / stub) and the deterministic rubric grader, and pass the tests.
+# ---------------------------------------------------------------------------
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.29,<1.0
+pydantic>=2.6,<3.0
+pydantic-settings>=2.2,<3.0
+python-multipart>=0.0.9
+python-dotenv>=1.0
+
+# Imaging / document handling
+pillow>=10.2
+numpy>=1.26
+PyMuPDF>=1.24          # PDF -> page images (fast, pure wheel)
+opencv-python-headless>=4.9   # deskew / denoise (optional at runtime, guarded)
+pytesseract>=0.3.10    # fallback OCR wrapper (needs the `tesseract` binary at runtime)
+
+# HTTP client for provider-agnostic LLM grading (OpenAI-compatible + Anthropic)
+httpx>=0.27
+
+# Tests
+pytest>=8.0
+pytest-asyncio>=0.23
+respx>=0.21            # httpx mocking for grader tests

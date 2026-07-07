@@ -1,29 +1,33 @@
 import express from 'express';
 import { upload } from '../middleware/upload.js';
-import { extractTextFromImage } from '../services/ocrService.js';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
+import axios from 'axios';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 const router = express.Router();
+const PYTHON_SERVICE = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
 
-// POST /api/ocr - Process image with OCR
-router.post('/', upload.single('image'), async (req, res) => {
-  let imagePath;
+router.post('/', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'No image file provided' });
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
 
-    imagePath = path.resolve(__dirname, '../../uploads', req.file.filename);
-    const extracted = await extractTextFromImage(imagePath);
+    const formData = new FormData();
+    formData.append('file', req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype,
+    });
 
-    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    res.json(extracted);
-  } catch (error) {
-    if (imagePath && fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-    console.error('OCR error:', error);
-    res.status(500).json({ error: error.message || 'OCR processing failed' });
+    const response = await axios.post(`${PYTHON_SERVICE}/ocr`, formData, {
+      headers: formData.getHeaders(),
+      timeout: 300000,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
+
+    res.json(response.data);
+  } catch (err) {
+    console.error('OCR error:', err.response?.data || err.message);
+    res.status(err.response?.status || 500).json({ error: err.response?.data?.detail || err.message || 'OCR failed' });
   }
 });
 

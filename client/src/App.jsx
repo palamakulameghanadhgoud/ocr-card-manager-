@@ -1,15 +1,10 @@
-import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import CardDetail from './pages/CardDetail';
+import ScriptEvaluator from './pages/ScriptEvaluator';
 
 function App() {
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/cards/:id" element={<CardDetail />} />
-      </Routes>
+      <ScriptEvaluator />
     </Layout>
   );
 }

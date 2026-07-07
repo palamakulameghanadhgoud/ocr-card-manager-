@@ -6,7 +6,7 @@ import {
   Container,
   Box,
 } from '@mui/material';
-import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 
 export default function Layout(props) {
   return (
@@ -43,16 +43,26 @@ export default function Layout(props) {
                 mr: 1.5,
               }}
             >
-              <BusinessCenterIcon sx={{ fontSize: 24 }} />
+              <AssignmentTurnedInRoundedIcon sx={{ fontSize: 24 }} />
             </Box>
             <Typography
               variant="h6"
               component="span"
               sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}
             >
-              Business Card Manager
+              Exam Script Evaluator
             </Typography>
           </Box>
+            <Typography
+              variant="body2"
+              sx={{
+                display: { xs: 'none', sm: 'block' },
+                color: 'rgba(255,255,255,0.8)',
+                fontWeight: 500,
+              }}
+            >
+              Upload PDFs, score rubric points, and review feedback
+            </Typography>
         </Toolbar>
       </AppBar>
       <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3 }, px: { xs: 2, sm: 3 } }}>

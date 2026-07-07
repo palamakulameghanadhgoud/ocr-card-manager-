@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: answer-paper-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=answer-paper-correction
+
+  python-ocr:
+    build:
+      context: ./ocr-service
+      dockerfile: Dockerfile
+    container_name: answer-paper-ocr
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - VLLM_BASE_URL=${VLLM_BASE_URL:-}
+      - VLLM_API_KEY=${VLLM_API_KEY:-EMPTY}
+      - QWEN_MODEL_ID=${QWEN_MODEL_ID:-Qwen/Qwen2.5-VL-7B-Instruct}
+      - TROCR_MODEL_ID=${TROCR_MODEL_ID:-microsoft/trocr-large-handwritten}
+      - DEVICE=${DEVICE:-auto}
+      - PDF_RENDER_DPI=${PDF_RENDER_DPI:-200}
+      - MAX_PAGES=${MAX_PAGES:-30}
+      - DESKEW=${DESKEW:-true}
+      - GRADER_PROVIDER=${GRADER_PROVIDER:-auto}
+      - GRADER_BASE_URL=${GRADER_BASE_URL:-}
+      - GRADER_API_KEY=${GRADER_API_KEY:-}
+      - GRADER_MODEL=${GRADER_MODEL:-gpt-4o-mini}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-5}
+      - GRADER_TIMEOUT_S=${GRADER_TIMEOUT_S:-60}
+      - OCR_BACKEND=${OCR_BACKEND:-auto}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./ocr-service/.env:/app/.env:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: answer-paper-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/answer-paper-correction
+      - PYTHON_SERVICE_URL=http://python-ocr:8000
+      - CLIENT_URL=http://localhost:3000
+    depends_on:
+      - mongodb
+      - python-ocr
+    volumes:
+      - ./server/.env:/app/.env:ro
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: answer-paper-client
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:5000
+    depends_on:
+      - server
+
+volumes:
+  mongodb_data:

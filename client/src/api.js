@@ -6,14 +6,12 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-export const cardsApi = {
-  getAll: (params) => api.get('/cards', { params }),
-  getById: (id) => api.get(`/cards/${id}`),
-  create: (formData) => api.post('/cards', formData, {
+export const evaluationApi = {
+  evaluate: (formData) => api.post('/evaluation', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
-  update: (id, data) => api.put(`/cards/${id}`, data),
-  delete: (id) => api.delete(`/cards/${id}`),
+  history: () => api.get('/evaluation/history'),
+  getById: (id) => api.get(`/evaluation/${id}`),
 };
 
 export const ocrApi = {
@@ -22,9 +20,6 @@ export const ocrApi = {
   }),
 };
 
-export const categoriesApi = {
-  getAll: () => api.get('/categories'),
-  create: (data) => api.post('/categories', data),
+export const healthApi = {
+  check: () => api.get('/health'),
 };
-
-export const getImageUrl = (path) => (path?.startsWith('http') ? path : path);

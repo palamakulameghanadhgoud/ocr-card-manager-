@@ -1,55 +1,169 @@
 # Deployment Guide
 
-## 1. Push to GitHub
+## Architecture Overview
+
+This system has three services:
+1. **Client** (React + Vite) - Port 3000
+2. **Server** (Express API Gateway) - Port 5000
+3. **Python OCR Service** (FastAPI) - Port 8000
+4. **MongoDB** - Port 27017
+
+## Option 1: Docker Compose (Recommended)
 
 ```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/palamakulameghanadhgoud/ocr-card-manager-.git
-git push -u origin main
+# Clone
+git clone <repo>
+cd ocr-card-manager
+
+# Configure environment
+cp .env.example .env
+cp server/.env.example server/.env
+cp client/.env.example client/.env
+cp ocr-service/.env.example ocr-service/.env
+
+# Edit .env files with your API keys
+# For GPU: ensure nvidia-docker runtime is available
+
+# Start all services
+docker-compose up -d --build
+
+# Services available at:
+# - Frontend: http://localhost:3000
+# - API Gateway: http://localhost:5000
+# - OCR Service: http://localhost:8000
+# - MongoDB: localhost:27017
 ```
 
-## 2. Deploy Backend (Railway or Render)
+## Option 2: Kubernetes / Cloud Deploy
 
-The backend needs MongoDB and file storage. Deploy to **Railway** or **Render**:
+### Python OCR Service (GPU Required for Qwen2.5-VL)
 
-### Railway
+**vLLM Server (GPU Host):**
+```yaml
+# k8s/vllm-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-qwen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-qwen
+  template:
+    metadata:
+      labels:
+        app: vllm-qwen
+    spec:
+      containers:
+      - name: vllm
+        image: vllm/vllm-openai:latest
+        command:
+        - python
+        - -m
+        - vllm.entrypoints.openai.api_server
+        - --model
+        - Qwen/Qwen2.5-VL-7B-Instruct
+        - --max-model-len
+        - "8192"
+        - --limit-mm-per-prompt
+        - "image=5"
+        - --tensor-parallel-size
+        - "1"
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+        volumeMounts:
+        - name: hf-cache
+          mountPath: /root/.cache/huggingface
+      volumes:
+      - name: hf-cache
+        persistentVolumeClaim:
+          claimName: hf-cache-pvc
+```
 
-1. Go to [railway.app](https://railway.app) and sign in
-2. New Project → Deploy from GitHub → select your repo
-3. Set **Root Directory** to `server`
-4. Add env vars:
-   - `MONGODB_URI` = your MongoDB Atlas connection string
-   - `NODE_ENV` = production
-5. Deploy → copy the public URL (e.g. `https://your-app.railway.app`)
+**OCR Service (CPU or GPU):**
+```bash
+# Set VLLM_BASE_URL=http://vllm-qwen:8000/v1 in ocr-service/.env
+# Build and deploy ocr-service Docker image
+```
 
-### Render
+### Server (API Gateway)
+```bash
+# Build server Docker image
+# Deploy with MONGODB_URI pointing to MongoDB Atlas or managed instance
+# Set PYTHON_SERVICE_URL to OCR service endpoint
+```
 
-1. Go to [render.com](https://render.com) and sign in
-2. New → Web Service → connect your repo
-3. **Root Directory**: `server`
-4. **Build Command**: `npm install`
-5. **Start Command**: `node src/index.js`
-6. Add env: `MONGODB_URI`, `NODE_ENV=production`
-7. Deploy → copy the URL
+### Client
+```bash
+# Build client Docker image
+# Set VITE_API_URL to server endpoint
+# Deploy behind nginx or CDN
+```
 
-## 3. Deploy Frontend on Vercel
+## Option 3: Managed Services
 
-1. Go to [vercel.com](https://vercel.com) and sign in
-2. Import your GitHub repo
-3. Vercel will auto-detect the config from `vercel.json`
-4. Add **Environment Variable**:
-   - `VITE_API_URL` = your backend URL (e.g. `https://your-app.railway.app`)
-5. Deploy
+### MongoDB
+- **MongoDB Atlas** (recommended): Create cluster, get connection string
+- **Azure Cosmos DB** (MongoDB API)
+- **AWS DocumentDB**
 
-The frontend will call your backend URL for all API requests.
+### GPU Compute for vLLM
+- **RunPod**: GPU instances with vLLM template
+-ready templates
+- **Lambda Labs**: A100/H100 instances
+- **AWS/GCP/Azure**: GPU VMs with NVIDIA drivers
 
-## 4. CORS
+### Container Hosting
+- **Railway/Render/Fly.io**: Simple container deploy
+- **AWS ECS/Fargate**, **GCP Cloud Run**, **Azure Container Apps**
+- **Kubernetes**: EKS/GKE/AKS with GPU node pools
 
-Ensure your backend allows the Vercel domain. In `server/src/index.js`, CORS is enabled for all origins. For production you may want to restrict:
+## Environment Variables Summary
+
+| Service | Required | Optional |
+|---------|----------|----------|
+| Server | MONGODB_URI, PYTHON_SERVICE_URL | PORT, NODE_ENV, CLIENT_URL |
+| Client | VITE_API_URL | - |
+| OCR Service | - | VLLM_BASE_URL, ANTHROPIC_API_KEY, GRADER_API_KEY, OCR_BACKEND, DEVICE |
+
+## CORS Configuration
+
+For production, restrict CORS in `server/src/index.js`:
 
 ```js
-app.use(cors({ origin: ['https://your-app.vercel.app'] }));
+app.use(cors({ 
+  origin: ['https://your-frontend-domain.com'],
+  credentials: true 
+}));
 ```
+
+## Health Checks
+
+All services expose `/health`:
+- Server: `GET /api/health`
+- OCR Service: `GET /health`
+
+## Monitoring
+
+Add to docker-compose.yml:
+```yaml
+services:
+  prometheus:
+    image: prom/prometheus
+    ports: ["9090:9090"]
+  grafana:
+    image: grafana/grafana
+    ports: ["3001:3000"]
+```
+
+## SSL/HTTPS
+
+Use reverse proxy (nginx/Traefik) in front of all services with Let's Encrypt certificates.
+
+## Backup
+
+MongoDB: Use Atlas backups or `mongodump` cron job.

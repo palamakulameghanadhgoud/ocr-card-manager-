@@ -4,9 +4,9 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
-import cardsRouter from './routes/cards.js';
+import evaluationRouter from './routes/evaluation.js';
 import ocrRouter from './routes/ocr.js';
-import categoriesRouter from './routes/categories.js';
+import healthRouter from './routes/health.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,12 +17,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-app.use('/api/cards', cardsRouter);
+app.use('/api/health', healthRouter);
+app.use('/api/evaluation', evaluationRouter);
 app.use('/api/ocr', ocrRouter);
-app.use('/api/categories', categoriesRouter);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
